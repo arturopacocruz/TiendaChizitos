@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace TiendaChizitos.Entidades;
 
@@ -15,6 +16,6 @@ public class Producto
     public Guid CategoriaId { get; set; }
 
     // Navegación
-    public Categoria Categoria { get; set; } =null!;
+    public Categoria? Categoria { get; set; }
     public ICollection<DetalleVenta> DetalleVentas { get; set; } = new List<DetalleVenta>();
 }
