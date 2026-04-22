@@ -2,12 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TiendaChizitos.Data;
 using TiendaChizitos.Entidades;
+using TiendaComida.DTO.Venta.GenerarVenta;
 
 namespace TiendaChizitos.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class VentasController : ControllerBase
+    public class VentasController : BaseApiController
     {
         private readonly AppDbContext _contexto;
 
@@ -37,17 +36,82 @@ namespace TiendaChizitos.Controllers
 
         // POST: api/ventas
         [HttpPost]
-        public async Task<ActionResult<Venta>> CreateVenta([FromBody] Venta venta)
+        public async Task<ActionResult<GenerarVentaOutput>> CreateVenta([FromBody] GenerarVentaInput input)
         {
-            venta.Id = Guid.NewGuid();
-            venta.Fecha = DateTime.Now;
+            if (input.Detalle == null || !input.Detalle.Any())
+                return BadRequest("La venta debe tener al menos un producto.");
+
+            // VALIDAR CLIENTE
+            var cliente = await _contexto.Clientes
+                .FirstOrDefaultAsync(c =>
+                    c.Ci == input.ci);
+
+            if (cliente == null)
+                return BadRequest("El cliente no existe. No se puede realizar la venta.");
+
+            var venta = new Venta
+            {
+                Id = Guid.NewGuid(),
+                Fecha = DateTime.Now,
+                ClienteId = cliente.Id,
+                DetalleVentas = new List<DetalleVenta>()
+            };
+
+            decimal total = 0;
+
+            foreach (var detalle in input.Detalle)
+            {
+                var producto = await _contexto.Productos
+                    .FindAsync(detalle.ProductoId);
+
+                if (producto == null)
+                    return BadRequest(
+                        $"Producto con ID {detalle.ProductoId} no existe."
+                    );
+
+                if (producto.Stock < detalle.Cantidad)
+                    return BadRequest(
+                        $"Stock insuficiente para producto {detalle.ProductoId}. Disponible: {producto.Stock}"
+                    );
+
+                // descontar stock
+                producto.Stock -= detalle.Cantidad;
+
+                // subtotal línea
+                decimal subtotal = producto.Precio * detalle.Cantidad;
+
+                // acumular total venta
+                total += subtotal;
+
+                venta.DetalleVentas.Add(new DetalleVenta
+                {
+                    Id = Guid.NewGuid(),
+                    ProductoId = detalle.ProductoId,
+                    Cantidad = detalle.Cantidad,
+
+                    // guardar precio unitario
+                    Precio = producto.Precio
+                });
+            }
+
+            venta.Total = total;
 
             _contexto.Ventas.Add(venta);
+
             await _contexto.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetVenta), new { id = venta.Id }, venta);
-        }
+            var output = new GenerarVentaOutput
+            {
+                VentaId = venta.Id,
+                Fecha = venta.Fecha
+            };
 
+            return CreatedAtAction(
+                nameof(GetVenta),
+                new { id = venta.Id },
+                output
+            );
+        }
         // PUT: api/ventas/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateVenta(Guid id, [FromBody] Venta venta)

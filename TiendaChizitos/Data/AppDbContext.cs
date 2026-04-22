@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // ================= CLIENTE =================
         modelBuilder.Entity<Cliente>()
             .ToTable("Cliente");
 
@@ -34,7 +35,7 @@ public class AppDbContext : DbContext
             .Property(x => x.PorcentajeDescuento)
             .HasColumnType("decimal(5,2)");
 
-
+        // ================= VENTA =================
         modelBuilder.Entity<Venta>()
             .ToTable("Venta");
 
@@ -47,6 +48,7 @@ public class AppDbContext : DbContext
             .Property(x => x.Total)
             .HasColumnType("decimal(10,2)");
 
+        // ================= DETALLE VENTA =================
         modelBuilder.Entity<DetalleVenta>()
             .ToTable("DetalleVenta");
 
@@ -64,6 +66,7 @@ public class AppDbContext : DbContext
             .Property(x => x.Precio)
             .HasColumnType("decimal(10,2)");
 
+        // ================= PRODUCTO =================
         modelBuilder.Entity<Producto>()
             .ToTable("Producto");
 
@@ -76,17 +79,18 @@ public class AppDbContext : DbContext
             .Property(x => x.Precio)
             .HasColumnType("decimal(10,2)");
 
+        // 🔥 RELACIÓN OPCIONAL (AQUÍ ESTÁ LA CLAVE)
         modelBuilder.Entity<Producto>()
             .HasOne(x => x.Categoria)
             .WithMany(x => x.Productos)
-            .HasForeignKey(x => x.CategoriaId);
-            
+            .HasForeignKey(x => x.CategoriaId)
+            .IsRequired(false); // ← permite NULL
+
         modelBuilder.Entity<Producto>()
             .Property(x => x.EsVigente)
             .HasDefaultValue(true);
 
-
-
+        // ================= CATEGORIA =================
         modelBuilder.Entity<Categoria>()
             .ToTable("Categoria");
 

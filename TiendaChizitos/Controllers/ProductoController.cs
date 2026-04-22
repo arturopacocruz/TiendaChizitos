@@ -1,13 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TiendaChizitos.Data;
+using TiendaChizitos.DTO.Producto.AgregarProducto;
 using TiendaChizitos.Entidades;
 
 namespace TiendaChizitos.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ProductosController : ControllerBase
+    public class ProductosController : BaseApiController
     {
         private readonly AppDbContext _contexto;
 
@@ -20,7 +19,8 @@ namespace TiendaChizitos.Controllers
         [HttpGet]
         public async Task<ActionResult<ICollection<Producto>>> GetProductos()
         {
-            return Ok(await _contexto.Productos.ToListAsync());
+            var productos = await _contexto.Productos.ToListAsync();
+            return Ok(productos);
         }
 
         // GET: api/productos/{id}
@@ -37,14 +37,32 @@ namespace TiendaChizitos.Controllers
 
         // POST: api/productos
         [HttpPost]
-        public async Task<ActionResult<Producto>> CreateProducto([FromBody] Producto producto)
+        public async Task<ActionResult<AgregarProductoOutput>> CreateProducto([FromBody] AgregarProductoInput producto)
         {
-            producto.Id = Guid.NewGuid();
+            var entrada = new Producto
+            {
+                Nombre = producto.Nombre,
+                Precio = producto.precio,
+                Stock = producto.stock
+            };
 
-            _contexto.Productos.Add(producto);
+            
+            entrada.Id = Guid.NewGuid();
+            // El producto es vigente si tiene stock disponible
+            entrada.EsVigente = entrada.Stock > 0;;
+
+            _contexto.Productos.Add(entrada);
             await _contexto.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetProducto), new { id = producto.Id }, producto);
+            var salida = new AgregarProductoOutput
+            {
+                Id = entrada.Id,
+                Nombre = entrada.Nombre,
+                precio = entrada.Precio,
+                stock = entrada.Stock
+            };
+
+            return CreatedAtAction(nameof(GetProducto), new { id = salida.Id }, salida);
         }
 
         // PUT: api/productos/{id}
@@ -52,7 +70,7 @@ namespace TiendaChizitos.Controllers
         public async Task<IActionResult> UpdateProducto(Guid id, [FromBody] Producto producto)
         {
             if (id != producto.Id)
-                return BadRequest();
+                return BadRequest("El ID no coincide.");
 
             var existing = await _contexto.Productos.FindAsync(id);
             if (existing == null)
@@ -61,9 +79,7 @@ namespace TiendaChizitos.Controllers
             existing.Nombre = producto.Nombre;
             existing.Precio = producto.Precio;
             existing.Stock = producto.Stock;
-            existing.CategoriaId = producto.CategoriaId;
 
-            existing.EsVigente = producto.EsVigente;
 
             await _contexto.SaveChangesAsync();
 

@@ -5,9 +5,7 @@ using TiendaChizitos.Entidades;
 
 namespace TiendaChizitos.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ClientesController : ControllerBase
+    public class ClientesController : BaseApiController
     {
         private readonly AppDbContext _contexto;
 
@@ -20,13 +18,16 @@ namespace TiendaChizitos.Controllers
         [HttpGet]
         public async Task<ActionResult<ICollection<Cliente>>> GetClientes()
         {
-            return Ok(await _contexto.Clientes.ToListAsync());
+            return Ok(await _contexto.Clientes.AsNoTracking().ToListAsync());
         }
 
         // GET: api/clientes/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Cliente>> GetCliente(Guid id)
         {
+            if (id == Guid.Empty)
+                return BadRequest("El ID del cliente es inválido.");
+
             var cliente = await _contexto.Clientes.FindAsync(id);
 
             if (cliente == null)
@@ -39,7 +40,23 @@ namespace TiendaChizitos.Controllers
         [HttpPost]
         public async Task<ActionResult<Cliente>> CreateCliente([FromBody] Cliente cliente)
         {
+            // Validación fecha
+            if (cliente.FechaNacimiento.Date > DateTime.UtcNow.Date)
+                return BadRequest("La fecha de nacimiento no puede ser futura.");
+
+            // Normalizar extensión
+            var extensionNormalizada = AdecuarExtension(cliente.Extension);
+
+            // Validar duplicados
+            var existeCliente = await _contexto.Clientes.AnyAsync(x =>
+                x.Ci == cliente.Ci &&
+                ((x.Extension ?? string.Empty).Trim().ToUpper() == (extensionNormalizada ?? string.Empty)));
+
+            if (existeCliente)
+                return Conflict("Ya existe un cliente con el mismo CI y extensión.");
+
             cliente.Id = Guid.NewGuid();
+            cliente.Extension = extensionNormalizada;
 
             _contexto.Clientes.Add(cliente);
             await _contexto.SaveChangesAsync();
@@ -51,16 +68,32 @@ namespace TiendaChizitos.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCliente(Guid id, [FromBody] Cliente cliente)
         {
+            if (id == Guid.Empty)
+                return BadRequest("El ID del cliente es inválido.");
+
             if (id != cliente.Id)
-                return BadRequest();
+                return BadRequest("El ID no coincide.");
+
+            if (cliente.FechaNacimiento.Date > DateTime.UtcNow.Date)
+                return BadRequest("La fecha de nacimiento no puede ser futura.");
 
             var existing = await _contexto.Clientes.FindAsync(id);
             if (existing == null)
                 return NotFound();
 
+            var extensionNormalizada = AdecuarExtension(cliente.Extension);
+
+            var existeCliente = await _contexto.Clientes.AnyAsync(x =>
+                x.Id != id &&
+                x.Ci == cliente.Ci &&
+                ((x.Extension ?? string.Empty).Trim().ToUpper() == (extensionNormalizada ?? string.Empty)));
+
+            if (existeCliente)
+                return Conflict("Ya existe otro cliente con el mismo CI y extensión.");
+
             existing.Nombre = cliente.Nombre;
             existing.Ci = cliente.Ci;
-            existing.Extension = cliente.Extension;
+            existing.Extension = extensionNormalizada;
             existing.FechaNacimiento = cliente.FechaNacimiento;
             existing.EsFrecuente = cliente.EsFrecuente;
             existing.PorcentajeDescuento = cliente.PorcentajeDescuento;
@@ -74,6 +107,9 @@ namespace TiendaChizitos.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCliente(Guid id)
         {
+            if (id == Guid.Empty)
+                return BadRequest("El ID del cliente es inválido.");
+
             var cliente = await _contexto.Clientes.FindAsync(id);
             if (cliente == null)
                 return NotFound();
@@ -82,6 +118,14 @@ namespace TiendaChizitos.Controllers
             await _contexto.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private static string? AdecuarExtension(string? extension)
+        {
+            if (string.IsNullOrWhiteSpace(extension))
+                return null;
+
+            return extension.Trim().ToUpperInvariant();
         }
     }
 }

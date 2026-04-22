@@ -13,7 +13,7 @@ public class Producto
     public bool EsVigente { get; set; } = true;
 
     // FK
-    public Guid CategoriaId { get; set; }
+    public Guid? CategoriaId { get; set; }
 
     // Navegación
     public Categoria? Categoria { get; set; }
