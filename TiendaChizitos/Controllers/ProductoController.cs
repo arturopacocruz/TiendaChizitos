@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TiendaChizitos.Data;
-using TiendaChizitos.DTO.Producto.AgregarProducto;
 using TiendaChizitos.Entidades;
 
 namespace TiendaChizitos.Controllers
@@ -15,19 +14,60 @@ namespace TiendaChizitos.Controllers
             _contexto = contexto;
         }
 
+
         // GET: api/productos
         [HttpGet]
         public async Task<ActionResult<ICollection<Producto>>> GetProductos()
         {
-            var productos = await _contexto.Productos.ToListAsync();
-            return Ok(productos);
+            return Ok(
+                await _contexto.Productos
+                    .Include(p => p.Categoria)
+                    .ToListAsync()
+            );
         }
+
+
+        // QUERY POR VIGENCIA
+        // api/productos/ListarPorVigencia?esVigente=true
+        // api/productos/ListarPorVigencia?esVigente=false
+        // api/productos/ListarPorVigencia
+        [HttpGet("ListarPorVigencia")]
+        [ActionName("ListarPorVigencia")]
+        public async Task<ActionResult<ICollection<Producto>>> ListarPorVigencia(
+            [FromQuery] bool? esVigente
+        )
+        {
+            var query = _contexto.Productos
+                .Include(producto => producto.Categoria)
+                .AsQueryable();
+
+
+            // true = solo vigentes
+            // false = solo no vigentes
+            // null = ambos
+            if (esVigente.HasValue)
+            {
+                query = query.Where(
+                    producto => producto.EsVigente == esVigente.Value
+                );
+            }
+
+            var lista = await query.ToListAsync();
+
+            return Ok(lista);
+        }
+
+
 
         // GET: api/productos/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Producto>> GetProducto(Guid id)
         {
-            var producto = await _contexto.Productos.FindAsync(id);
+            var producto = await _contexto.Productos
+                .Include(p => p.Categoria)
+                .FirstOrDefaultAsync(
+                    producto => producto.Id == id
+                );
 
             if (producto == null)
                 return NotFound();
@@ -35,66 +75,70 @@ namespace TiendaChizitos.Controllers
             return Ok(producto);
         }
 
-        // POST: api/productos
+
+
+        // POST
         [HttpPost]
-        public async Task<ActionResult<AgregarProductoOutput>> CreateProducto([FromBody] AgregarProductoInput producto)
+        public async Task<ActionResult<Producto>> CreateProducto(
+            [FromBody] Producto producto
+        )
         {
-            var entrada = new Producto
-            {
-                Nombre = producto.Nombre,
-                Precio = producto.precio,
-                Stock = producto.stock
-            };
+            producto.Id = Guid.NewGuid();
 
-            
-            entrada.Id = Guid.NewGuid();
-            // El producto es vigente si tiene stock disponible
-            entrada.EsVigente = entrada.Stock > 0;;
+            _contexto.Productos.Add(producto);
 
-            _contexto.Productos.Add(entrada);
             await _contexto.SaveChangesAsync();
 
-            var salida = new AgregarProductoOutput
-            {
-                Id = entrada.Id,
-                Nombre = entrada.Nombre,
-                precio = entrada.Precio,
-                stock = entrada.Stock
-            };
-
-            return CreatedAtAction(nameof(GetProducto), new { id = salida.Id }, salida);
+            return CreatedAtAction(
+                nameof(GetProducto),
+                new { id = producto.Id },
+                producto
+            );
         }
 
-        // PUT: api/productos/{id}
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProducto(Guid id, [FromBody] Producto producto)
-        {
-            if (id != producto.Id)
-                return BadRequest("El ID no coincide.");
 
-            var existing = await _contexto.Productos.FindAsync(id);
-            if (existing == null)
+
+        // PUT
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateProducto(
+            Guid id,
+            [FromBody] Producto producto
+        )
+        {
+            if(id != producto.Id)
+                return BadRequest();
+
+            var productoExistente =
+                await _contexto.Productos.FindAsync(id);
+
+            if(productoExistente == null)
                 return NotFound();
 
-            existing.Nombre = producto.Nombre;
-            existing.Precio = producto.Precio;
-            existing.Stock = producto.Stock;
-
+            productoExistente.Nombre = producto.Nombre;
+            productoExistente.Precio = producto.Precio;
+            productoExistente.Stock = producto.Stock;
+            productoExistente.EsVigente = producto.EsVigente;
+            productoExistente.CategoriaId = producto.CategoriaId;
 
             await _contexto.SaveChangesAsync();
 
             return NoContent();
         }
 
-        // DELETE: api/productos/{id}
+
+
+        // DELETE
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProducto(Guid id)
         {
-            var producto = await _contexto.Productos.FindAsync(id);
-            if (producto == null)
+            var producto =
+                await _contexto.Productos.FindAsync(id);
+
+            if(producto == null)
                 return NotFound();
 
             _contexto.Productos.Remove(producto);
+
             await _contexto.SaveChangesAsync();
 
             return NoContent();

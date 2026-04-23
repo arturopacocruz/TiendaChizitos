@@ -36,18 +36,22 @@ namespace TiendaChizitos.Controllers
 
         // POST: api/ventas
         [HttpPost]
-        public async Task<ActionResult<GenerarVentaOutput>> CreateVenta([FromBody] GenerarVentaInput input)
+        public async Task<ActionResult<GenerarVentaOutput>> CreateVenta(
+            [FromBody] GenerarVentaInput input)
         {
             if (input.Detalle == null || !input.Detalle.Any())
-                return BadRequest("La venta debe tener al menos un producto.");
+                return BadRequest(
+                    "La venta debe tener al menos un producto."
+                );
 
             // VALIDAR CLIENTE
             var cliente = await _contexto.Clientes
-                .FirstOrDefaultAsync(c =>
-                    c.Ci == input.ci);
+                .FirstOrDefaultAsync(cliente => cliente.Ci == input.ci);
 
             if (cliente == null)
-                return BadRequest("El cliente no existe. No se puede realizar la venta.");
+                return BadRequest(
+                    "El cliente no existe. No se puede realizar la venta."
+                );
 
             var venta = new Venta
             {
@@ -59,37 +63,39 @@ namespace TiendaChizitos.Controllers
 
             decimal total = 0;
 
-            foreach (var detalle in input.Detalle)
+            foreach (var detalleInput in input.Detalle)
             {
                 var producto = await _contexto.Productos
-                    .FindAsync(detalle.ProductoId);
+                    .FindAsync(detalleInput.ProductoId);
 
                 if (producto == null)
                     return BadRequest(
-                        $"Producto con ID {detalle.ProductoId} no existe."
+                        $"Producto con ID {detalleInput.ProductoId} no existe."
                     );
 
-                if (producto.Stock < detalle.Cantidad)
+                if (producto.Stock < detalleInput.Cantidad)
                     return BadRequest(
-                        $"Stock insuficiente para producto {detalle.ProductoId}. Disponible: {producto.Stock}"
+                        $"Stock insuficiente para producto {detalleInput.ProductoId}. Disponible: {producto.Stock}"
                     );
 
-                // descontar stock
-                producto.Stock -= detalle.Cantidad;
+                // Descontar stock
+                producto.Stock -= detalleInput.Cantidad;
 
-                // subtotal línea
-                decimal subtotal = producto.Precio * detalle.Cantidad;
+                if (producto.Stock == 0)
+                {
+                    producto.EsVigente = false;
+                }
 
-                // acumular total venta
+                decimal subtotal =
+                    producto.Precio * detalleInput.Cantidad;
+
                 total += subtotal;
 
                 venta.DetalleVentas.Add(new DetalleVenta
                 {
                     Id = Guid.NewGuid(),
-                    ProductoId = detalle.ProductoId,
-                    Cantidad = detalle.Cantidad,
-
-                    // guardar precio unitario
+                    ProductoId = detalleInput.ProductoId,
+                    Cantidad = detalleInput.Cantidad,
                     Precio = producto.Precio
                 });
             }
@@ -100,10 +106,38 @@ namespace TiendaChizitos.Controllers
 
             await _contexto.SaveChangesAsync();
 
+            // Ouput
             var output = new GenerarVentaOutput
             {
-                VentaId = venta.Id,
-                Fecha = venta.Fecha
+                Fecha = venta.Fecha,
+                Total = venta.Total,
+
+                Cliente = new ClienteVentaOutput
+                {
+                    Nombre = cliente.Nombre,
+                    Ci = cliente.Ci,
+                    Extension = cliente.Extension,
+                    PorcentajeDescuento = cliente.PorcentajeDescuento
+                },
+
+                Detalle = venta.DetalleVentas
+                    .Select(detalleVenta => new DetalleVentaOutput
+                    {
+
+                        Nombre = _contexto.Productos
+                            .First(producto =>
+                                producto.Id == detalleVenta.ProductoId)
+                            .Nombre,
+
+                        Cantidad = detalleVenta.Cantidad,
+
+                        Precio = detalleVenta.Precio,
+
+                        Subtotal =
+                            detalleVenta.Cantidad *
+                            detalleVenta.Precio
+
+                    }).ToList()
             };
 
             return CreatedAtAction(
@@ -112,20 +146,25 @@ namespace TiendaChizitos.Controllers
                 output
             );
         }
+
         // PUT: api/ventas/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateVenta(Guid id, [FromBody] Venta venta)
+        public async Task<IActionResult> UpdateVenta(
+            Guid id,
+            [FromBody] Venta venta)
         {
             if (id != venta.Id)
                 return BadRequest();
 
-            var existing = await _contexto.Ventas.FindAsync(id);
-            if (existing == null)
+            var ventaExistente =
+                await _contexto.Ventas.FindAsync(id);
+
+            if (ventaExistente == null)
                 return NotFound();
 
-            existing.Fecha = venta.Fecha;
-            existing.Total = venta.Total;
-            existing.ClienteId = venta.ClienteId;
+            ventaExistente.Fecha = venta.Fecha;
+            ventaExistente.Total = venta.Total;
+            ventaExistente.ClienteId = venta.ClienteId;
 
             await _contexto.SaveChangesAsync();
 
@@ -137,10 +176,12 @@ namespace TiendaChizitos.Controllers
         public async Task<IActionResult> DeleteVenta(Guid id)
         {
             var venta = await _contexto.Ventas.FindAsync(id);
+
             if (venta == null)
                 return NotFound();
 
             _contexto.Ventas.Remove(venta);
+
             await _contexto.SaveChangesAsync();
 
             return NoContent();

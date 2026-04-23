@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TiendaChizitos.Data;
 using TiendaChizitos.Entidades;
+using TiendaChizitos.DTO.Cliente; // Asegúrate de importar tus DTOs
 
 namespace TiendaChizitos.Controllers
 {
@@ -38,30 +39,48 @@ namespace TiendaChizitos.Controllers
 
         // POST: api/clientes
         [HttpPost]
-        public async Task<ActionResult<Cliente>> CreateCliente([FromBody] Cliente cliente)
+        public async Task<ActionResult<AñadirClienteOUT>> CreateCliente([FromBody] AñadirClienteIN clienteDto)
         {
-            // Validación fecha
-            if (cliente.FechaNacimiento.Date > DateTime.UtcNow.Date)
+            // Validación de fecha
+            if (clienteDto.FechaNacimiento.Date > DateTime.UtcNow.Date)
                 return BadRequest("La fecha de nacimiento no puede ser futura.");
 
             // Normalizar extensión
-            var extensionNormalizada = AdecuarExtension(cliente.Extension);
+            var extensionNormalizada = AdecuarExtension(clienteDto.Extension);
 
-            // Validar duplicados
+            // Validar duplicados (CI + Extensión)
             var existeCliente = await _contexto.Clientes.AnyAsync(x =>
-                x.Ci == cliente.Ci &&
+                x.Ci == clienteDto.Ci &&
                 ((x.Extension ?? string.Empty).Trim().ToUpper() == (extensionNormalizada ?? string.Empty)));
 
             if (existeCliente)
                 return Conflict("Ya existe un cliente con el mismo CI y extensión.");
 
-            cliente.Id = Guid.NewGuid();
-            cliente.Extension = extensionNormalizada;
+            // Mapeo de DTO a Entidad
+            var nuevoCliente = new Cliente
+            {
+                Id = Guid.NewGuid(),
+                Ci = clienteDto.Ci,
+                Nombre = clienteDto.Nombre,
+                Extension = extensionNormalizada,
+                FechaNacimiento = clienteDto.FechaNacimiento
+            };
 
-            _contexto.Clientes.Add(cliente);
+            // Persistencia
+            _contexto.Clientes.Add(nuevoCliente);
             await _contexto.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetCliente), new { id = cliente.Id }, cliente);
+            // Mapeo de Entidad a DTO de salida
+            var respuesta = new AñadirClienteOUT
+            {
+                Id = nuevoCliente.Id,
+                Ci = nuevoCliente.Ci,
+                Nombre = nuevoCliente.Nombre,
+                Extension = nuevoCliente.Extension,
+                FechaNacimiento = nuevoCliente.FechaNacimiento
+            };
+
+            return CreatedAtAction(nameof(GetCliente), new { id = respuesta.Id }, respuesta);
         }
 
         // PUT: api/clientes/{id}

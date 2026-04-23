@@ -15,7 +15,11 @@
 
   <ItemGroup>
     <Folder Include="Data\" />
-    <Folder Include="Entidades\" />
+    <Folder Include="DTO\Cliente\" />
+    <Folder Include="DTO\Producto\" />
+    <Folder Include="DTO\Venta\" />
+    <Folder Include="DTO\Venta\GenerarVenta\" />
+    <Folder Include="Semilla\" />
   </ItemGroup>
 
 </Project>
