@@ -165,7 +165,52 @@ public class Semilla
                 CategoriaId = lacteos.Id
             }
         };
-
+        // Clientes
+        if (contexto.Clientes.Any()) return ; // Si ya hay datos, no hacemos nada
+            var clientes = new List<Cliente>()
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    Ci = 12345678, 
+                    Extension = "A1",
+                    Nombre = "JUAN PEREZ",
+                    FechaNacimiento = new DateTime(1990, 1, 1),
+                    EsFrecuente = true,
+                    PorcentajeDescuento = 15
+                },
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    Ci = 87654321, 
+                    Extension = "",
+                    Nombre = "MARIA GOMEZ",
+                    FechaNacimiento = new DateTime(1985, 5, 20),
+                    EsFrecuente = false,
+                    PorcentajeDescuento = 0
+                },
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    Ci = 11223344, 
+                    Extension = "B2",
+                    Nombre = "CARLOS LOPEZ",
+                    FechaNacimiento = new DateTime(1995, 3, 15),
+                    EsFrecuente = true,
+                    PorcentajeDescuento = 10
+                },
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    Ci = 44332211, 
+                    Extension = "C3",
+                    Nombre = "ANA MARTINEZ",
+                    FechaNacimiento = new DateTime(1988, 7, 30),
+                    EsFrecuente = false,
+                    PorcentajeDescuento = 0
+                },
+            };
+        contexto.Clientes.AddRange(clientes);
         contexto.Productos.AddRange(productos);
 
         await contexto.SaveChangesAsync();
