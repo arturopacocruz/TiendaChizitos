@@ -8,7 +8,7 @@ public class Semilla
 {
     public static async Task Poblar(AppDbContext contexto)
     {
-        if (contexto.Productos.Any())
+        if (contexto.Clientes.Any())
             return;
 
 
@@ -49,6 +49,54 @@ public class Semilla
 
         contexto.Categorias.AddRange(categorias);
 
+
+        // CLIENTES
+
+        var clientes = new List<Cliente>()
+        {
+            new()
+            {
+                Id = Guid.Parse("3f9f0d1e-5c88-4d45-978d-7e4c1a1b0a01"),
+                Ci = 1234567,
+                Extension = "LP",
+                Nombre = "Ana Pérez",
+                FechaNacimiento = new DateTime(1990, 5, 10),
+                EsFrecuente = false,
+                PorcentajeDescuento = 0m
+            },
+            new()
+            {
+                Id = Guid.Parse("8d7c3a2b-1f44-4e29-9e5d-2f8b7e4d0c02"),
+                Ci = 2345678,
+                Extension = "CB",
+                Nombre = "Juan Gómez",
+                FechaNacimiento = new DateTime(1985, 9, 22),
+                EsFrecuente = false,
+                PorcentajeDescuento = 0m
+            },
+            new()
+            {
+                Id = Guid.Parse("b5a2d1f6-3c77-4a12-a8f3-0d6e5b2c0f03"),
+                Ci = 3456789,
+                Extension = "SC",
+                Nombre = "María Torres",
+                FechaNacimiento = new DateTime(1995, 2, 14),
+                EsFrecuente = false,
+                PorcentajeDescuento = 0m
+            },
+            new()
+            {
+                Id = Guid.Parse("f1e2d3c4-b5a6-4f78-9e0d-1a2b3c4d5e6f"),
+                Ci = 4567890,
+                Extension = "TJ",
+                Nombre = "Carlos Rodríguez",
+                FechaNacimiento = new DateTime(1988, 12, 5),
+                EsFrecuente = true,
+                PorcentajeDescuento = 5m
+            }
+        };
+
+        contexto.Clientes.AddRange(clientes);
 
 
         // PRODUCTOS

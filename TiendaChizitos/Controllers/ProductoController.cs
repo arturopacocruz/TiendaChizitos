@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TiendaChizitos.Data;
+using TiendaChizitos.DTO.Producto.AgregarProducto;
+using TiendaChizitos.DTO.Producto.EditarProducto;
 using TiendaChizitos.Entidades;
 
 namespace TiendaChizitos.Controllers
@@ -41,10 +43,6 @@ namespace TiendaChizitos.Controllers
                 .Include(producto => producto.Categoria)
                 .AsQueryable();
 
-
-            // true = solo vigentes
-            // false = solo no vigentes
-            // null = ambos
             if (esVigente.HasValue)
             {
                 query = query.Where(
@@ -57,7 +55,30 @@ namespace TiendaChizitos.Controllers
             return Ok(lista);
         }
 
+        // QUERY POR NOMBRE
+        // api/productos/Buscar?nombre=papas
+        [HttpGet("Buscar")]
+        public async Task<ActionResult<ICollection<Producto>>> BuscarProductos(
+            [FromQuery] string? nombre
+        )
+        {
+            var query = _contexto.Productos
+                .Include(producto => producto.Categoria)
+                .AsQueryable();
 
+            if (!string.IsNullOrWhiteSpace(nombre))
+            {
+                var termino = nombre.Trim().ToLower();
+
+                query = query.Where(producto =>
+                    producto.Nombre.ToLower().Contains(termino)
+                );
+            }
+
+            var lista = await query.ToListAsync();
+
+            return Ok(lista);
+        }
 
         // GET: api/productos/{id}
         [HttpGet("{id}")]
@@ -79,46 +100,102 @@ namespace TiendaChizitos.Controllers
 
         // POST
         [HttpPost]
-        public async Task<ActionResult<Producto>> CreateProducto(
-            [FromBody] Producto producto
+        public async Task<ActionResult<AgregarProductoOutput>> CreateProducto(
+            [FromBody] AgregarProductoInput productoDto
         )
         {
-            producto.Id = Guid.NewGuid();
+            if (string.IsNullOrWhiteSpace(productoDto.Nombre))
+                return BadRequest("El nombre del producto es obligatorio.");
+
+            if (productoDto.Nombre.Length > 100)
+                return BadRequest("El nombre del producto no puede tener más de 100 caracteres.");
+
+            if (productoDto.Precio < 0)
+                return BadRequest("El precio del producto no puede ser negativo.");
+
+            if (productoDto.Stock < 0)
+                return BadRequest("El stock del producto no puede ser negativo.");
+
+            if (productoDto.CategoriaId.HasValue)
+            {
+                var categoriaExiste = await _contexto.Categorias
+                    .AnyAsync(c => c.Id == productoDto.CategoriaId.Value);
+
+                if (!categoriaExiste)
+                    return BadRequest("La categoría especificada no existe.");
+            }
+
+            var producto = new Producto
+            {
+                Id = Guid.NewGuid(),
+                Nombre = productoDto.Nombre.Trim(),
+                Precio = productoDto.Precio,
+                Stock = productoDto.Stock,
+                EsVigente = productoDto.EsVigente,
+                CategoriaId = productoDto.CategoriaId
+            };
 
             _contexto.Productos.Add(producto);
-
             await _contexto.SaveChangesAsync();
+
+            var respuesta = new AgregarProductoOutput
+            {
+                Id = producto.Id,
+                Nombre = producto.Nombre,
+                Precio = producto.Precio,
+                Stock = producto.Stock,
+                CategoriaId = producto.CategoriaId,
+                EsVigente = producto.EsVigente
+            };
 
             return CreatedAtAction(
                 nameof(GetProducto),
                 new { id = producto.Id },
-                producto
+                respuesta
             );
         }
-
-
 
         // PUT
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateProducto(
             Guid id,
-            [FromBody] Producto producto
+            [FromBody] ActualizarProductoInput productoDto
         )
         {
-            if(id != producto.Id)
-                return BadRequest();
+            if (id == Guid.Empty)
+                return BadRequest("El ID del producto es inválido.");
 
-            var productoExistente =
-                await _contexto.Productos.FindAsync(id);
+            if (string.IsNullOrWhiteSpace(productoDto.Nombre))
+                return BadRequest("El nombre del producto es obligatorio.");
 
-            if(productoExistente == null)
+            if (productoDto.Nombre.Length > 100)
+                return BadRequest("El nombre del producto no puede tener más de 100 caracteres.");
+
+            if (productoDto.Precio < 0)
+                return BadRequest("El precio del producto no puede ser negativo.");
+
+            if (productoDto.Stock < 0)
+                return BadRequest("El stock del producto no puede ser negativo.");
+
+            if (productoDto.CategoriaId.HasValue)
+            {
+                var categoriaExiste = await _contexto.Categorias
+                    .AnyAsync(c => c.Id == productoDto.CategoriaId.Value);
+
+                if (!categoriaExiste)
+                    return BadRequest("La categoría especificada no existe.");
+            }
+
+            var productoExistente = await _contexto.Productos.FindAsync(id);
+
+            if (productoExistente == null)
                 return NotFound();
 
-            productoExistente.Nombre = producto.Nombre;
-            productoExistente.Precio = producto.Precio;
-            productoExistente.Stock = producto.Stock;
-            productoExistente.EsVigente = producto.EsVigente;
-            productoExistente.CategoriaId = producto.CategoriaId;
+            productoExistente.Nombre = productoDto.Nombre.Trim();
+            productoExistente.Precio = productoDto.Precio;
+            productoExistente.Stock = productoDto.Stock;
+            productoExistente.EsVigente = productoDto.EsVigente;
+            productoExistente.CategoriaId = productoDto.CategoriaId;
 
             await _contexto.SaveChangesAsync();
 

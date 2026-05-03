@@ -12,5 +12,7 @@ namespace TiendaChizitos.DTO.Cliente
         public string? Extension { get; set; }
         public required string Nombre { get; set; }
         public DateTime FechaNacimiento { get; set; }
+        public bool EsFrecuente { get; set; }
+        public decimal PorcentajeDescuento { get; set; }
     }
 }
