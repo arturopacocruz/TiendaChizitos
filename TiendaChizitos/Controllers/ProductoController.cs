@@ -53,7 +53,7 @@ namespace TiendaChizitos.Controllers
             var lista = await query.ToListAsync();
 
             return Ok(lista);
-        }
+        } 
 
         // QUERY POR NOMBRE
         // api/productos/Buscar?nombre=papas

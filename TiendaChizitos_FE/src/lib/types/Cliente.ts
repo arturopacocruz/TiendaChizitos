@@ -30,4 +30,4 @@ export interface BuscarParams {
     nombre?: string;
     ci?: number;
     extension?: string;
-}
+} 

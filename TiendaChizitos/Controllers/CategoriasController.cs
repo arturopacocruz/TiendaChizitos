@@ -18,14 +18,14 @@ namespace TiendaChizitos.Controllers
         }
 
         // GET: api/categorias
-        [HttpGet]
+        [HttpGet("listarCategorias")]
         public async Task<ActionResult<ICollection<Categoria>>> GetCategorias()
         {
             return Ok(await _contexto.Categorias.AsNoTracking().ToListAsync());
         }
 
         // GET: api/categorias/Buscar?nombre=papas
-        [HttpGet("Buscar")]
+        [HttpGet("BuscarCategoria")]
         public async Task<ActionResult<ICollection<CategoriaConListaProductosOutput>>> BuscarCategorias([FromQuery] string? nombre)
         {
             var query = _contexto.Categorias
@@ -59,7 +59,7 @@ namespace TiendaChizitos.Controllers
         }
 
         // GET: api/categorias/Resumen
-        [HttpGet("Resumen")]
+        [HttpGet("ResumenCategoria")]
         public async Task<ActionResult<ICollection<CategoriaConProductosOutput>>> GetCategoriasConConteo()
         {
             var lista = await _contexto.Categorias
