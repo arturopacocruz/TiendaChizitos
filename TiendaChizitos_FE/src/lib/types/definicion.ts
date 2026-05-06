@@ -1,10 +1,33 @@
+// Entidad completa que devuelve la base de datos
 export interface Cliente {
-  id: string;                  // El GUID que viene de SQL Server
-  ci: number;                  // Carnet de Identidad
-  extension: string;           // Ej: "B2"
-  nombre: string;              // Nombre completo
-  fechaNacimiento: string;     // Fecha en formato ISO
-  esFrecuente: boolean;        // Lógica para el Chip de MUI
-  porcentajeDescuento: number; // Valor numérico
-  ventas: any[];               // Arreglo de ventas (puedes tiparlo después)
+    id: string;
+    ci: number;
+    nombre: string;
+    extension?: string;
+    fechaNacimiento: string;
+    esFrecuente: boolean;
+    porcentajeDescuento: number;
+}
+
+// DTO para creación (AñadirClienteIN)
+export interface AñadirClienteIN {
+    ci: number;
+    nombre: string;
+    extension?: string;
+    fechaNacimiento: string;
+}
+
+// DTO para actualización (ActualizarClienteIN)
+export interface ActualizarClienteIN {
+    ci: number;
+    nombre: string;
+    extension?: string;
+    fechaNacimiento: string;
+}
+
+// DTO para búsqueda con el nuevo campo de extensión
+export interface BuscarParams {
+    nombre?: string;
+    ci?: number;
+    extension?: string;
 }
