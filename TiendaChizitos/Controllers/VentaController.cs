@@ -53,17 +53,21 @@ namespace TiendaChizitos.Controllers
         }
 
         // QUERY POR CLIENTE
+        public class ListarVentasPorClienteInput
+        {
+            public int? Ci { get; set; }
+            public string? Extension { get; set; }
+        }
         // api/ventas/ListarPorCliente?ci=1234567&extension=LP
         [HttpGet("ListarPorCliente")]
         public async Task<ActionResult<ICollection<ListarVentasOutput>>> ListarPorCliente(
-            [FromQuery] int? ci,
-            [FromQuery] string? extension
+            [FromQuery] ListarVentasPorClienteInput input
         )
         {
-            if (!ci.HasValue)
+            if (!input.Ci.HasValue)
                 return BadRequest("Debe proporcionar el CI del cliente.");
 
-            var extensionNormalizada = AdecuarExtension(extension);
+            var extensionNormalizada = AdecuarExtension(input.Extension);
 
             var ventas = await _contexto.Ventas
                 .Include(v => v.Cliente)
@@ -72,7 +76,7 @@ namespace TiendaChizitos.Controllers
                 .AsQueryable()
                 .Where(v =>
                     v.Cliente != null &&
-                    v.Cliente.Ci == ci.Value &&
+                    v.Cliente.Ci == input.Ci.Value &&
                     (extensionNormalizada == null ||
                      (v.Cliente.Extension ?? string.Empty) == extensionNormalizada)
                 )
@@ -103,14 +107,18 @@ namespace TiendaChizitos.Controllers
         }
 
         // QUERY POR FECHA
+        public class Vencimiento
+        {
+            public DateTime? Desde { get; set; }
+            public DateTime? Hasta { get; set; }
+        }
         // api/ventas/ListarPorFecha?desde=2026-01-01&hasta=2026-05-03
         [HttpGet("ListarPorFecha")]
         public async Task<ActionResult<ICollection<ListarVentasOutput>>> ListarPorFecha(
-            [FromQuery] DateTime? desde,
-            [FromQuery] DateTime? hasta
+            [FromQuery] Vencimiento parameters
         )
         {
-            if (desde.HasValue && hasta.HasValue && desde.Value > hasta.Value)
+            if (parameters.Desde.HasValue && parameters.Hasta.HasValue && parameters.Desde.Value > parameters.Hasta.Value)
                 return BadRequest("La fecha 'desde' no puede ser mayor que la fecha 'hasta'.");
 
             var ventas = await _contexto.Ventas
@@ -119,8 +127,8 @@ namespace TiendaChizitos.Controllers
                 .ThenInclude(d => d.Producto)
                 .AsQueryable()
                 .Where(v =>
-                    (!desde.HasValue || v.Fecha.Date >= desde.Value.Date) &&
-                    (!hasta.HasValue || v.Fecha.Date <= hasta.Value.Date)
+                    (!parameters.Desde.HasValue || v.Fecha.Date >= parameters.Desde.Value.Date) &&
+                    (!parameters.Hasta.HasValue || v.Fecha.Date <= parameters.Hasta.Value.Date)
                 )
                 .ToListAsync();
 
