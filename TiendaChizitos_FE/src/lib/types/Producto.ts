@@ -25,4 +25,4 @@ export interface ActualizarProductoInput {
     stock: number;
     esVigente: boolean;
     categoriaId?: string;
-}
+} 

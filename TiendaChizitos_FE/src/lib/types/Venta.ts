@@ -32,4 +32,4 @@ export interface GenerarVentaInput {
 export interface GenerarVentaDetalleInput {
     productoId: string;
     cantidad: number;
-}
+} 

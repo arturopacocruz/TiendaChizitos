@@ -36,4 +36,4 @@ export interface AgregarCategoriaInput {
 // DTO para actualización (ActualizarCategoriaInput)
 export interface ActualizarCategoriaInput {
     nombre: string;
-}
+} 
