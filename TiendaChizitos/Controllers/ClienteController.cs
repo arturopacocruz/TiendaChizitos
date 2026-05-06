@@ -26,23 +26,27 @@ namespace TiendaChizitos.Controllers
         // QUERY POR NOMBRE O CI
         // api/clientes/Buscar?nombre=mariana
         // api/clientes/Buscar?ci=1234567
+        public class buscar
+        {
+            public string? Nombre { get; set; }
+            public int? Ci { get; set; }
+        }
         [HttpGet("Buscar")]
         public async Task<ActionResult<ICollection<Cliente>>> BuscarClientes(
-            [FromQuery] string? nombre,
-            [FromQuery] int? ci
+            [FromQuery] buscar parametros
         )
         {
             var query = _contexto.Clientes.AsNoTracking().AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(nombre))
+            if (!string.IsNullOrWhiteSpace(parametros.Nombre))
             {
-                var termino = nombre.Trim().ToLower();
+                var termino = parametros.Nombre.Trim().ToLower();
                 query = query.Where(cliente => cliente.Nombre.ToLower().Contains(termino));
             }
 
-            if (ci.HasValue)
+            if (parametros.Ci.HasValue)
             {
-                query = query.Where(cliente => cliente.Ci == ci.Value);
+                query = query.Where(cliente => cliente.Ci == parametros.Ci.Value);
             }
 
             return Ok(await query.ToListAsync());
@@ -64,7 +68,7 @@ namespace TiendaChizitos.Controllers
         }
 
         // POST: api/clientes
-        [HttpPost]
+        [HttpPost(("Agregar"))]
         public async Task<ActionResult<AñadirClienteOUT>> CreateCliente([FromBody] AñadirClienteIN clienteDto)
         {
             if (clienteDto.Ci <= 0)
